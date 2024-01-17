@@ -8,6 +8,7 @@ from PyQt5.QtGui import QIcon
 import qtawesome as qta
 import logging
 from colorama import Fore,Style
+from datetime import datetime
 
 # Made by J3tus
 
@@ -16,6 +17,18 @@ class Browser(QMainWindow):
         super().__init__()
 
         self.original_icon_names = self.load_icons()
+        self.search_history = []
+
+        navbar = QToolBar()
+        self.addToolBar(navbar)
+        
+        navbar_container = QWidget(self)
+        navbar_layout = QVBoxLayout(navbar_container)
+        navbar_layout.setContentsMargins(0, 0, 0, 0)
+        navbar_layout.addWidget(navbar)
+
+        main_layout = QVBoxLayout()
+        main_layout.addWidget(navbar_container)
 
         self.tab_widget = QTabWidget(self)
         self.tab_widget.setTabsClosable(True)
@@ -23,13 +36,20 @@ class Browser(QMainWindow):
         self.tab_widget.currentChanged.connect(self.tab_changed)
         self.setCentralWidget(self.tab_widget)
 
+        tab_widget_container = QWidget(self)
+        tab_layout = QVBoxLayout(tab_widget_container)
+        tab_layout.setContentsMargins(0, 0, 0, 0)
+        tab_layout.addWidget(self.tab_widget)
+
+        main_layout.addWidget(tab_widget_container)
+
+        central_widget = QWidget(self)
+        central_widget.setLayout(main_layout)
+        self.setCentralWidget(central_widget)
+
         self.create_tab()
-
         self.main_window = QWidget(self)
-
-        navbar = QToolBar()
-        self.addToolBar(navbar)
-
+       
         back_btn = QAction(self.load_icon('Back', 'fa.chevron-left', 'black'), 'Back', self)
         back_btn.setStatusTip('Back to the previous page')
         back_btn.triggered.connect(self.browser_back)
@@ -73,7 +93,7 @@ class Browser(QMainWindow):
         self.dark_mode.setCheckable(True)
         self.dark_mode.toggled.connect(self.toggle_dark_mode)
         navbar.addAction(self.dark_mode)
-
+  
         self.showMinimized()
         self.centerWindow()
         self.setWindowTitle('PyBrowser')
@@ -89,8 +109,11 @@ class Browser(QMainWindow):
 
         if not os.path.exists(self.dark_stylesheet_path):
             self.create_stylesheet_file(self.dark_stylesheet_path, 'Dark Mode Styles')
+            
         if not os.path.exists(self.light_stylesheet_path):
             self.create_stylesheet_file(self.light_stylesheet_path, 'Light Mode Styles')
+
+        self.toggle_dark_mode()
 
     def centerWindow(self):
         screenGeometry = QDesktopWidget().screenGeometry()
@@ -104,12 +127,13 @@ class Browser(QMainWindow):
             "Forward": "fa.chevron-right",
             "Reload": "fa.refresh",
             "Home": "fa.home",
+            "New Tab": "fa.plus",
             "Search": "fa.search",
             "Dark Mode": "fa5.moon",
+            "Light Mode": "mdi6.lightbulb-on-10",
             "Secure Indicator": "fa.lock",
             "Unsecure Indicator": "fa.unlock"
         }
-
         os.makedirs(os.path.dirname(default_icons_path), exist_ok=True)
 
         if not os.path.exists(default_icons_path):
@@ -155,10 +179,11 @@ class Browser(QMainWindow):
         print(f"{Fore.GREEN}INFO{Style.RESET_ALL} - {log_text}")  # Added colorama log formatting
         logging.info(log_text)
 
-    def read_stylesheet(self, file_path, default_stylesheet):
+    def read_stylesheet(self, file_path, default_stylesheet, debug=False):
         try:
             with open(file_path, 'r') as stylesheet_file:
-                print("Using Custom Styles")
+                if debug != False:
+                    print("Using Custom Styles")
                 return stylesheet_file.read()
         except IOError:
             print(f"{file_path} not found or unreadable. Using default styles.")
@@ -172,8 +197,8 @@ class Browser(QMainWindow):
                 default_icon_name = self.original_icon_names.get(action_name, '')
                 icon_name = self.load_icon(action_name, default_icon_name, icon_color, set=False)
                 action.setIcon(qta.icon(icon_name, color=icon_color))
-        dark_mode_stylesheet = self.read_stylesheet(self.dark_stylesheet_path, 'dark_mode_stylesheet')
-        light_mode_stylesheet = self.read_stylesheet(self.light_stylesheet_path, 'light_mode_stylesheet')
+        dark_mode_stylesheet = self.read_stylesheet(self.dark_stylesheet_path, 'dark_mode_stylesheet', False)
+        light_mode_stylesheet = self.read_stylesheet(self.light_stylesheet_path, 'light_mode_stylesheet', False)
 
         if not self.dark_mode.isChecked():
             self.setStyleSheet(light_mode_stylesheet)
@@ -189,7 +214,7 @@ class Browser(QMainWindow):
     def create_stylesheet_file(self, file_path, content):
         darkstylesheet = """
             QMainWindow {
-                background-color: #1e1e1e;
+                background-color: #2b2b2b;
                 color: #ffffff;
             }
             QToolBar {
@@ -199,19 +224,33 @@ class Browser(QMainWindow):
             QLineEdit {
                 background-color: #333333;
                 color: #ffffff;
-            }"""
+            }
+            QTabBar::tab {
+                background-color: #2b2b2b; 
+                color: white;
+                padding: 8px;
+                border-color: black;
+                margin-left: 1px;
+            }
+            """
         lightstylesheet = """
             QMainWindow {
                 background-color: #ffffff;
                 color: #000000;
             }
             QToolBar {
-                background-color: #f0f0f0;
+                background-color: #ffffff;
                 color: #000000;
             }
             QLineEdit {
                 background-color: #ffffff;
                 color: #000000;
+            }
+            QTabBar::tab {
+                background-color: whitesmoke; 
+                color: black;
+                padding: 8px;
+                margin-left: 1px;
             }
         """
         try:
@@ -289,18 +328,21 @@ class Browser(QMainWindow):
 
     def create_tab(self):
         browser = QWebEngineView()
-
         browser.urlChanged.connect(self.update_urlbar)
-
-        self.tab_widget.addTab(browser, "Loading...")
+        self.tab_widget.addTab(browser, "Loading...")  
         self.tab_widget.setCurrentWidget(browser)
+        self.tab_widget.setMovable(True)
         self.current_tab = browser
         self.navigate_home()
+        self.log_user_action('Open Tab', f'Tab opened with URL: {self.current_tab.url().toString()}')
 
     def close_tab(self, index):
         widget = self.tab_widget.widget(index)
         widget.close()
+        self.log_user_action('Close Tab', f'Tab closed with URL: {widget.url().toString()}')
         self.tab_widget.removeTab(index)
+        if self.tab_widget.count() == 0:
+            self.close()
 
     def tab_changed(self, index):
         self.current_tab = self.tab_widget.widget(index)
