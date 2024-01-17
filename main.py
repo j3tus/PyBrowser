@@ -76,7 +76,7 @@ class Browser(QMainWindow):
 
         self.showMinimized()
         self.centerWindow()
-        self.setWindowTitle('Python Browser')
+        self.setWindowTitle('PyBrowser')
 
         self.setup_logging()
         self.log_user_action('Browser Status', 'Browser opened')
