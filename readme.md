@@ -26,7 +26,7 @@ Make sure you have Python and pip installed on your system.
 1. Clone the repository:
 
     ```bash
-    git clone https://github.com/yourusername/python-browser.git
+    git clone https://github.com/j3tus/python-browser.git
     ```
 
 2. Navigate to the project directory:
