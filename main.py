@@ -110,10 +110,16 @@ class Browser(QMainWindow):
             "Unsecure Indicator": "fa.unlock"
         }
 
-        with open(default_icons_path, "w") as default:
-            json.dump(icons, default, indent=4)
+        os.makedirs(os.path.dirname(default_icons_path), exist_ok=True)
 
-        print("Default icons added to icons.json")
+        if not os.path.exists(default_icons_path):
+            with open(default_icons_path, "w") as default:
+                json.dump(icons, default, indent=4)
+
+            print("Default icons added to icons.json")
+            self.original_icon_names = self.load_icons()
+        else:
+            print(f"File {default_icons_path} already exists. Skipping creation.")
 
     def load_icons(self, debug=True):
         default_icons_path = os.path.join(os.getcwd(), 'ui', 'icons.json')
@@ -130,6 +136,7 @@ class Browser(QMainWindow):
             self.create_default_icons(default_icons_path)
 
     def load_icon(self, action_name, default_icon_name, color, set=True):
+        if not self.original_icon_names: self.original_icon_names = self.load_icons()
         icon_name = self.original_icon_names.get(action_name, default_icon_name)
         if set == False:
             return icon_name
